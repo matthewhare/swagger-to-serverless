@@ -47,12 +47,29 @@ makeFiles();
 function makeServerlessFunctions() {
   var serverlessFunctions = serverlessObj.functions;
   var pathObj = swaggerObj.paths;
-  
+
+  // console.log(pathObj);
+
   for(var path in pathObj) {
     for (var method in pathObj[path]) {
+
+      // ignore parameters
+      if (method != "parameters")
+      {
+
+
+
       // path: /trips/{tripId}/members, method: get => getTripsMembers
       var functionName = getFunctionNameFromPath(method, path);
-      
+
+      console.log(pathObj[path])
+
+      if (pathObj[path][method].hasOwnProperty('operationId')) {
+        functionName = pathObj[path][method].operationId.split("-").join("");
+      }
+
+
+
       // output file struce
       var tag = "others";
       if (pathObj[path][method].hasOwnProperty('tags')) {
@@ -61,30 +78,32 @@ function makeServerlessFunctions() {
       if (!outputObj.hasOwnProperty(tag)) {
         outputObj[tag] = [];
       }
+
+
       outputObj[tag].push(functionName);
-      
+
       // make function content
-      
+
       // deploy error
       //var serverlessFunctionName = functionName;
       // deploy success
       var md5 = crypto.createHash('md5');
       var serverlessFunctionName = md5.update(functionName).digest('hex').substr(0, 4)
         + '-' + capitalizeFirstLetter(functionName);
-      
+
       if (!serverlessFunctions.hasOwnProperty(serverlessFunctionName)) {
         serverlessFunctions[serverlessFunctionName] = {};
       }
       var functionObj = serverlessFunctions[serverlessFunctionName];
-      
+
       // handler
       functionObj.handler = "handler." + functionName;
-      
+
       // events
       if (!functionObj.hasOwnProperty('events')) {
         functionObj.events = [];
       }
-      
+
       // events.http
       var httpIndex = hasObjectKeyInArray(functionObj.events, 'http');
       if (httpIndex == -1) {
@@ -92,12 +111,12 @@ function makeServerlessFunctions() {
         httpIndex = functionObj.events.length - 1;
       }
       var eventHttp = functionObj.events[httpIndex].http;
-      
+
       // TODO cors with header
       eventHttp.cors = true;
-      eventHttp.method = method;
+      eventHttp.method = (method == "parameters") ? "options" : method;
       eventHttp.path = path;
-      
+
       // event.http.request (parameters)
       if (pathObj[path][method].hasOwnProperty('parameters')) {
         eventHttp.integration = "lambda";
@@ -114,7 +133,9 @@ function makeServerlessFunctions() {
       }
       // TODO event.http.request (template)
       // TODO event.http.response
-    }  
+
+    } 
+    }
   }
 }
 
@@ -149,10 +170,10 @@ function makeFiles() {
   var moduleText = "";
   for (var tag in outputObj) {
     var text = getIncludeJSText(tag, outputObj[tag]);
-    fs.writeFileSync(outputPath + '/' + tag + '.js', text);
-    
-    requireText += "const " + tag + " = require('./" + tag + ".js');\n";
-    
+    fs.writeFileSync(outputPath + '/handlers/' + tag + '.js', text);
+
+    requireText += "const " + tag + " = require('./handlers/" + tag + ".js');\n";
+
     for (var name of outputObj[tag]) {
       moduleText += "  " + name + ": " + tag + "." + name + ",\n";
     }
@@ -173,7 +194,7 @@ function getIncludeJSText(tag, names) {
   text += "var " + objName + " = {\n";
   for (var name of names) {
     text += "  " + name + ": (event, context, callback) => {\n";
-    text += "    " + "const data = {};\n";
+    text += "    " + "const data = event;\n";
     text += "    " + "const response = {\n";
     text += "      " + "statusCode: 200,\n";
     text += "      " + "headers: {'Access-Control-Allow-Origin': '*'},\n";
@@ -207,6 +228,19 @@ function getFunctionNameFromPath(method, path) {
       name += capitalizeFirstLetter(v);
     }
   }
+  return name;
+}
+
+function getFunctionNameFromPath2(method) {
+
+  console.log("method::", method);
+  var name = method.summary.split(" ").join("");
+  // var paths = path.split(' ');
+  // for (var v of paths) {
+    // if (v.indexOf('{') == -1) {
+      // name += capitalizeFirstLetter(v);
+    // }
+  // }
   return name;
 }
 
