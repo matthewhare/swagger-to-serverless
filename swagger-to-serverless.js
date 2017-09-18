@@ -231,19 +231,6 @@ function getFunctionNameFromPath(method, path) {
   return name;
 }
 
-function getFunctionNameFromPath2(method) {
-
-  console.log("method::", method);
-  var name = method.summary.split(" ").join("");
-  // var paths = path.split(' ');
-  // for (var v of paths) {
-    // if (v.indexOf('{') == -1) {
-      // name += capitalizeFirstLetter(v);
-    // }
-  // }
-  return name;
-}
-
 function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
